@@ -8,7 +8,13 @@ status: draft
 
 ## Lokaler Start
 
-Issue #1 definiert den reproduzierbaren Docker-Desktop-Start des Flutter-Web-Frontends. API-URL, Ports, Healthcheck und Smoke-Test werden dort verbindlich dokumentiert.
+Issue #1 definiert den reproduzierbaren Docker-Desktop-Start des Flutter-Web-Frontends. Die vollständigen Befehle stehen in [Containerisierung](containerization.md):
+
+- Host-Port: `8080` (änderbar über `FRONTEND_PORT`)
+- Container-Port: `80`
+- Healthcheck: `GET /healthz` mit Body `ok`
+- Smoke-Test: Healthcheck und Startseite mit `curl`
+- Backend: bewusst nicht Bestandteil dieses Frontend-Compose-Setups
 
 ## Entwicklungsprozess
 

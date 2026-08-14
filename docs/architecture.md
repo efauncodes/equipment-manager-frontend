@@ -9,5 +9,7 @@ status: draft
 - Technologie: Flutter/Dart.
 - Repository-Grenze: Frontend only.
 - Das Go-Backend liegt in `equipment-manager-backend`.
-- API-URL, Ports, Build-Ziel und Healthcheck werden in Issue #1 und den Folge-Issues festgelegt.
+- Das Flutter-Web-Bundle wird mehrstufig gebaut und durch nginx ausgeliefert.
+- Der Container veröffentlicht Port 80; lokal wird er standardmäßig auf Port 8080 gemappt.
+- API-URL, Ports und Healthcheck sind in [Containerisierung](containerization.md) dokumentiert.
 - Keine produktiven Daten oder Secrets in diesem Repository.
