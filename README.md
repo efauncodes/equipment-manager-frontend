@@ -21,9 +21,14 @@ Zum Stoppen genügt `docker compose down`.
 
 Das Repository ist frisch initialisiert. Issue #1 definiert die verbindliche Containerisierung als ersten technischen Schritt.
 
-## Wiki
+## Projekt-Wiki
 
-- [Wiki-Index](docs/index.md)
+Die kanonische projektbezogene Knowledge-Wiki liegt außerhalb dieses
+Repositories in der gebundenen Obsidian-Wiki unter
+`/Users/efaun/Documents/ChatGPT/equipment-manager-frontend/wiki`.
+
+Die technische Dokumentation dieses Repositories bleibt versioniert:
+
 - [Architektur](docs/architecture.md)
 - [Betrieb und Workflow](docs/operations.md)
 - [Containerisierung](docs/containerization.md)
