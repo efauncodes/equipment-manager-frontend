@@ -16,6 +16,14 @@ Issue #1 definiert den reproduzierbaren Docker-Desktop-Start des Flutter-Web-Fro
 - Smoke-Test: Healthcheck und Startseite mit `curl`
 - Backend: bewusst nicht Bestandteil dieses Frontend-Compose-Setups
 
+## Serverinstallation und externe Abnahme
+
+Die reproduzierbare Installation auf einem Docker-kompatiblen Server und die
+Abnahme von einem getrennten Rechner sind in
+[Serverinstallation und externe Abnahme](server-deployment.md) beschrieben.
+Der Ablauf verwendet ausschließlich Docker Compose v2; Flutter und Dart
+müssen auf dem Server nicht installiert werden.
+
 ## Entwicklungsprozess
 
 Manager erstellt Issues -> Product Owner setzt `ready-for-dev` -> Entwickler arbeitet auf Feature-Branch -> QA prüft -> Product Owner merged nach `test` -> erfolgreicher Test wird nach `main` promoted. Der Main-Merge verwendet `Closes #<issue-number>`.

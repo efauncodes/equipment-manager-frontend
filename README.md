@@ -32,6 +32,7 @@ Die technische Dokumentation dieses Repositories bleibt versioniert:
 - [Architektur](docs/architecture.md)
 - [Betrieb und Workflow](docs/operations.md)
 - [Containerisierung](docs/containerization.md)
+- [Serverinstallation und externe Abnahme](docs/server-deployment.md)
 - [Entscheidungen](docs/decisions.md)
 
 ## Zuständigkeit
