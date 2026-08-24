@@ -18,8 +18,9 @@ Issue #3 — Frontend auf externem Docker-Server installieren und remote abnehme
   before the build; it never relies on the moving `main` branch.
 - Local and external curl checks assert HTTP 200 explicitly and still verify
   the `ok` body, the `Equipment Manager` title, and the SPA fallback.
-- Compose assertions verify exactly one running `frontend` service, JSON
-  health `healthy`, and no remaining Compose containers after `down`.
+- Compose assertions verify exactly one running `frontend` service, bind JSON
+  `Service=frontend` to `Health=healthy`, and verify no remaining Compose
+  containers after `down`; restart rechecks status 200 and body `ok`.
 
 ## Checks
 

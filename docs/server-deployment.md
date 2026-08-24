@@ -90,7 +90,7 @@ set -eu
 
 docker compose up --build -d
 test "$(docker compose ps --services --filter status=running | grep -cx frontend)" = 1
-docker compose ps --format json | grep -q '"Health":"healthy"'
+test "$(docker compose ps --format json | grep -Ec '"Service":"frontend".*"Health":"healthy"|"Health":"healthy".*"Service":"frontend"')" = 1
 ```
 
 Der Service muss genau einmal als laufend gefunden werden und im maschinen-
@@ -162,8 +162,9 @@ set -eu
 
 docker compose restart frontend
 test "$(docker compose ps --services --filter status=running | grep -cx frontend)" = 1
-docker compose ps --format json | grep -q '"Health":"healthy"'
+test "$(docker compose ps --format json | grep -Ec '"Service":"frontend".*"Health":"healthy"|"Health":"healthy".*"Service":"frontend"')" = 1
 test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$FRONTEND_URL/healthz")" = 200
+test "$(curl --silent --show-error "$FRONTEND_URL/healthz")" = ok
 ```
 
 Nach der Abnahme wird der Dienst vollständig entfernt:
