@@ -7,7 +7,7 @@ Issue #3 — Frontend auf externem Docker-Server installieren und remote abnehme
 ## Handoff
 
 - Branch: `feature/3-external-docker-server-acceptance`
-- Current commit: `0515e75150ea42f4600da3989f0d70f7db06e0fa`
+- Current commit: `5fc9c94382fb5ce594e83a366aae23822d51b5d8`
 - Target branch: `main`
 - QA verdict: `pass with risks`
 
