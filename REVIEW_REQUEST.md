@@ -7,7 +7,7 @@ Issue #3 — Frontend auf externem Docker-Server installieren und remote abnehme
 ## Handoff
 
 - Branch: `feature/3-external-docker-server-acceptance`
-- Current commit: `5fc9c94382fb5ce594e83a366aae23822d51b5d8`
+- PR head: verify the current commit SHA directly on [PR #6](https://github.com/efauncodes/equipment-manager-frontend/pull/6); the PR metadata is authoritative and this handoff intentionally avoids a self-referential commit hash.
 - Target branch: `main`
 - QA verdict: `pass with risks`
 
