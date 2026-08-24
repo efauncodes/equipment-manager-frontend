@@ -10,7 +10,7 @@ Issue #3 — Frontend auf externem Docker-Server installieren und remote abnehme
 - PR head: verify the current commit SHA directly on [PR #6](https://github.com/efauncodes/equipment-manager-frontend/pull/6); the PR metadata is authoritative and this handoff intentionally avoids a self-referential commit hash.
 - Review baseline SHA before this test-contract correction: `37c22ccbcf8663c119df789c8f4efc48014c5844`.
 - Target branch: `main`
-- QA verdict: `changes requested — correction in progress`
+- QA verdict: `pass with risks`
 
 ## Test-contract correction
 
@@ -30,6 +30,14 @@ Issue #3 — Frontend auf externem Docker-Server installieren und remote abnehme
 - Static acceptance, documentation-link, scope, and secret checks passed.
 - Runbook test-contract assertions are documented for exact HTTP 200, healthy
   service state, complete shutdown, and PR-head pinning.
+
+## Final test result
+
+- Test-only Riko: `pass with risks`; no test-design finding remains open.
+- Independent QA Sora: `pass with risks` after the assertion corrections.
+- Remaining risks are limited to the accepted environment gaps: no `test/`
+  directory, no Docker/Compose runtime, no suitable server, and therefore no
+  real external/browser/restart/down acceptance yet.
 - `flutter test` could not run because the repository has no `test/` directory.
 - Docker, Compose, external server, and browser checks are pending because Docker is not installed on the current host and no remote server was supplied.
 
