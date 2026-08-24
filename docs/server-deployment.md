@@ -49,17 +49,33 @@ Der Ablauf ist auf einem frischen Server ohne lokale Flutter- oder Dart-
 Installation ausführbar:
 
 ```sh
+set -eu
+
 git clone https://github.com/efauncodes/equipment-manager-frontend.git
 cd equipment-manager-frontend
 
 export FRONTEND_PORT=8080
-export API_BASE_URL=http://<backend-host>:<backend-port>
+export API_BASE_URL='http://<backend-host>:<backend-port>'
+export PR_BRANCH=feature/3-external-docker-server-acceptance
+export PR_NUMBER=6
+# Set PR_HEAD_SHA to the exact verified PR head before running this block.
+# The review baseline supplied for this issue is 37c22ccbcf8663c119df789c8f4efc48014c5844.
+: "${PR_HEAD_SHA:?set the exact verified PR #6 head SHA}"
+git fetch origin "refs/heads/${PR_BRANCH}:refs/remotes/origin/${PR_BRANCH}"
+test "$(git rev-parse "refs/remotes/origin/${PR_BRANCH}")" = "$PR_HEAD_SHA"
+git fetch origin "pull/${PR_NUMBER}/head:issue-${PR_NUMBER}"
+git checkout --detach "$PR_HEAD_SHA"
+test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"
 ```
 
 `FRONTEND_PORT` wählt den externen Host-Port. `API_BASE_URL` wird beim
 Flutter-Build eingebettet und ist keine Laufzeit-Umgebungsvariable des
 statischen Web-Bundles. Nach jeder Änderung an `API_BASE_URL` ist daher ein
-erneuter Build erforderlich.
+erneuter Build erforderlich. `PR_NUMBER` und `PR_HEAD_SHA` stellen sicher,
+dass die Abnahme den ausdrücklich übergebenen Head des Pull Requests und nicht
+versehentlich `main` prüft. Der Branch-Ref und der übergebene SHA müssen
+übereinstimmen; der SHA wird anschließend lokal verifiziert. Ein beweglicher
+Branch-Head allein reicht für die Testidentität nicht aus.
 
 Vor dem Build kann die gerenderte Compose-Konfiguration geprüft werden:
 
@@ -70,12 +86,16 @@ docker compose config
 ## Build und Start
 
 ```sh
+set -eu
+
 docker compose up --build -d
-docker compose ps
+test "$(docker compose ps --services --filter status=running | grep -cx frontend)" = 1
+docker compose ps --format json | grep -q '"Health":"healthy"'
 ```
 
-Der Service muss in `docker compose ps` als `healthy` erscheinen. Der
-verwendete Git-Commit wird für den Nachweis festgehalten:
+Der Service muss genau einmal als laufend gefunden werden und im maschinen-
+lesbaren Compose-Output den Zustand `healthy` melden. Der verwendete
+Git-Commit wird für den Nachweis festgehalten:
 
 ```sh
 git rev-parse HEAD
@@ -86,13 +106,21 @@ git rev-parse HEAD
 Diese Prüfungen laufen auf dem Server selbst und müssen erfolgreich sein:
 
 ```sh
-curl --fail --silent --show-error http://127.0.0.1:8080/healthz
-test "$(curl --fail --silent --show-error http://127.0.0.1:8080/healthz)" = ok
-curl --fail --silent --show-error http://127.0.0.1:8080/ | grep -q "Equipment Manager"
+set -eu
+
+assert_http_200() {
+  test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$1")" = 200
+}
+
+assert_http_200 http://127.0.0.1:8080/healthz
+test "$(curl --silent --show-error http://127.0.0.1:8080/healthz)" = ok
+assert_http_200 http://127.0.0.1:8080/
+curl --silent --show-error http://127.0.0.1:8080/ | grep -q "Equipment Manager"
 ```
 
-Der erste Befehl muss exakt `ok` ausgeben. Der zweite prüft, dass die
-Startseite den Titel `Equipment Manager` enthält.
+`assert_http_200` verwirft jeden Status außer HTTP 200, einschließlich 3xx.
+Der Healthcheck muss exakt `ok` ausgeben. Die Startseite muss den Titel
+`Equipment Manager` enthalten.
 
 ## Externe Abnahme von einem separaten Rechner
 
@@ -102,13 +130,24 @@ Wert von `FRONTEND_PORT` zu ersetzen. Ein DNS-Name oder HTTPS ist für diesen
 Test nicht erforderlich.
 
 ```sh
-export FRONTEND_URL=http://<server-ip>:<host-port>
+set -eu
 
-curl --fail --silent --show-error "$FRONTEND_URL/healthz"
-test "$(curl --fail --silent --show-error "$FRONTEND_URL/healthz")" = ok
-curl --fail --silent --show-error "$FRONTEND_URL/" | grep -q "Equipment Manager"
-curl --fail --silent --show-error "$FRONTEND_URL/qa/unknown-route" | grep -q "Equipment Manager"
+export FRONTEND_URL='http://<server-ip>:<host-port>'
+
+assert_http_200() {
+  test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$1")" = 200
+}
+
+assert_http_200 "$FRONTEND_URL/healthz"
+test "$(curl --silent --show-error "$FRONTEND_URL/healthz")" = ok
+assert_http_200 "$FRONTEND_URL/"
+curl --silent --show-error "$FRONTEND_URL/" | grep -q "Equipment Manager"
+assert_http_200 "$FRONTEND_URL/qa/unknown-route"
+curl --silent --show-error "$FRONTEND_URL/qa/unknown-route" | grep -q "Equipment Manager"
 ```
+
+Auch die externe Matrix verwirft jeden Status außer HTTP 200, einschließlich
+3xx. Der Healthcheck muss exakt `ok` ausgeben.
 
 Zusätzlich wird die Anwendung im Browser über `FRONTEND_URL` geöffnet. Der
 Browsertest bestätigt, dass die Flutter-Web-Anwendung ohne Serverfehler lädt.
@@ -119,19 +158,25 @@ Die unbekannte Route muss über den nginx-Fallback auf `index.html` auflösen.
 Der externe Healthcheck wird nach einem Container-Neustart wiederholt:
 
 ```sh
+set -eu
+
 docker compose restart frontend
-docker compose ps
-curl --fail --silent --show-error "$FRONTEND_URL/healthz"
+test "$(docker compose ps --services --filter status=running | grep -cx frontend)" = 1
+docker compose ps --format json | grep -q '"Health":"healthy"'
+test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$FRONTEND_URL/healthz")" = 200
 ```
 
 Nach der Abnahme wird der Dienst vollständig entfernt:
 
 ```sh
+set -eu
+
 docker compose down --remove-orphans
-docker compose ps
+test -z "$(docker compose ps -aq)"
 ```
 
-Der letzte Befehl darf keinen laufenden Frontend-Service mehr anzeigen.
+Die letzte Assertion verlangt, dass nach `docker compose down --remove-orphans`
+keine Compose-Service-Container mehr vorhanden sind.
 
 ## Testnachweis für den Pull Request
 
