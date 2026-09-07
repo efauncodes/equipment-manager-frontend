@@ -27,7 +27,7 @@ jobs:
       - name: Run Flutter checks
         run: |
           docker run --rm -v "$PWD:/workspace" -w /workspace \
-            ghcr.io/cirruslabs/flutter:3.47.2 sh -c \
+            ghcr.io/cirruslabs/flutter:latest@sha256:217a3d81b124f3fab82b24633bf66b256cc74528b894e7f17103f70150232077 sh -c \
             'flutter pub get && dart format --output=none --set-exit-if-changed lib && flutter analyze && if [ -d test ]; then flutter test; fi'
 
       - name: Build local frontend image

@@ -1,6 +1,6 @@
 # Flutter is pinned to a published SDK image so local and CI builds use the
 # same toolchain. Update this tag deliberately when upgrading Flutter.
-FROM ghcr.io/cirruslabs/flutter:3.47.2 AS build
+FROM ghcr.io/cirruslabs/flutter:latest@sha256:217a3d81b124f3fab82b24633bf66b256cc74528b894e7f17103f70150232077 AS build
 
 WORKDIR /src
 
