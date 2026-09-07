@@ -1,0 +1,141 @@
+name: Equipment Manager frontend
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'codex/**'
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+
+env:
+  IMAGE_NAME: ghcr.io/efauncodes/equipment-manager-frontend
+  API_BASE_URL: https://equipment-api.sentient-octopus.dev
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Run Flutter checks
+        run: |
+          docker run --rm -v "$PWD:/workspace" -w /workspace \
+            ghcr.io/cirruslabs/flutter:3.47.0 sh -c \
+            'flutter pub get && dart format --output=none --set-exit-if-changed lib && flutter analyze && if [ -d test ]; then flutter test; fi'
+
+      - name: Build local frontend image
+        run: docker build --build-arg API_BASE_URL="$API_BASE_URL" --tag equipment-manager-frontend:ci .
+
+      - name: Verify local frontend health
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach --name equipment-manager-frontend-ci --publish 127.0.0.1:18083:80 equipment-manager-frontend:ci
+          trap 'docker rm --force equipment-manager-frontend-ci >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:18083/healthz | grep -qx 'ok'; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs equipment-manager-frontend-ci
+          exit 1
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up attestations-capable Buildx
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+
+      - name: Publish immutable image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: publish
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          build-args: |
+            API_BASE_URL=${{ env.API_BASE_URL }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Verify exact image and attestations
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          IMAGE_DIGEST: ${{ steps.publish.outputs.digest }}
+        run: |
+          set -euo pipefail
+          test -n "$IMAGE_DIGEST"
+          image_ref="$IMAGE_NAME@$IMAGE_DIGEST"
+          inspect_output="$(docker buildx imagetools inspect "$image_ref")"
+          printf '%s\n' "$inspect_output"
+          printf '%s\n' "$inspect_output" | grep -Fq "Digest:          $IMAGE_DIGEST"
+          test "$(docker buildx imagetools inspect "$image_ref" --format '{{json .Provenance.SLSA}}')" != "null"
+          test "$(docker buildx imagetools inspect "$image_ref" --format '{{json .SBOM.SPDX}}')" != "null"
+          docker pull "$image_ref"
+          docker run --detach --name equipment-manager-frontend-published-ci --publish 127.0.0.1:18084:80 "$image_ref"
+          trap 'docker rm --force equipment-manager-frontend-published-ci >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:18084/healthz | grep -qx 'ok'; then
+              break
+            fi
+            sleep 2
+          done
+          curl --fail --silent --show-error http://127.0.0.1:18084/healthz | grep -qx 'ok'
+          {
+            echo "### Equipment Manager frontend image"
+            echo "- source SHA: \`${GITHUB_SHA}\`"
+            echo "- image: \`${image_ref}\`"
+            echo "- provenance: SLSA attestation present"
+            echo "- SBOM: SPDX attestation present"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Deploy staging frontend and verify health
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          IMAGE_REF: ${{ env.IMAGE_NAME }}@${{ steps.publish.outputs.digest }}
+          APP_VERSION: ${{ github.sha }}
+          STAGING_DIR: /opt/equipment-manager-frontend-stage
+          SSH_HOST: 159.195.250.23
+          SSH_USER: staging-deploy
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          STAGING_KNOWN_HOSTS: ${{ secrets.STAGING_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_dir="$RUNNER_TEMP/equipment-manager-staging-ssh"
+          mkdir -p "$ssh_dir"
+          printf '%s\n' "$STAGING_SSH_KEY" > "$ssh_dir/id_ed25519"
+          printf '%s\n' "$STAGING_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          chmod 600 "$ssh_dir/id_ed25519" "$ssh_dir/known_hosts"
+          ssh -i "$ssh_dir/id_ed25519" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$ssh_dir/known_hosts" "$SSH_USER@$SSH_HOST" \
+            "deploy equipment-frontend $IMAGE_REF $APP_VERSION"
+          {
+            echo "### Equipment Manager frontend deployment"
+            echo "- source SHA: \`${APP_VERSION}\`"
+            echo "- image: \`${IMAGE_REF}\`"
+            echo "- pull-only deployment: PASS"
+            echo "- VPS health: PASS"
+          } >> "$GITHUB_STEP_SUMMARY"
