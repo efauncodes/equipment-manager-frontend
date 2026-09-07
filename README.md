@@ -12,8 +12,8 @@ curl --fail http://localhost:8080/healthz
 ```
 
 Das Frontend ist anschließend unter <http://localhost:8080> erreichbar. Der
-Container meldet sich über `/healthz` als gesund. Die optionale API-Basis-URL
-wird beim Build gesetzt: `API_BASE_URL=http://localhost:8081 docker compose up --build -d`.
+Container meldet sich über `/healthz` als gesund. Der Build verwendet die
+bestätigte API-Basis-URL `https://equipment-api.sentient-octopus.dev`.
 
 Zum Stoppen genügt `docker compose down`.
 
