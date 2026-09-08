@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 const apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://localhost:8081',
+  defaultValue: 'https://equipment-api.sentient-octopus.dev',
 );
 
 void main() {
